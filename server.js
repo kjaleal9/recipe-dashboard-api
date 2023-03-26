@@ -8,7 +8,7 @@ const equipmentRequirements = require('./LocalDatabase/RecipeEquipmentRequiremen
 
 const knex = require('knex');
 
-const enviornment = 'Production';
+const enviornment = 'Local';
 
 const db = knex({
   client: 'pg',
