@@ -4,6 +4,7 @@ const knex = require("knex");
 const recipes = require("./routes/recipes");
 const materials = require("./routes/materials");
 const processClasses = require("./routes/processClasses");
+const phases = require("./routes/phases");
 
 const db = knex({
   client: "pg",
@@ -24,6 +25,7 @@ app.use(cors());
 app.use("/recipes", recipes);
 app.use("/materials", materials);
 app.use("/process-classes", processClasses);
+app.use("/phases", phases);
 
 app.listen(5000, () => {
   console.log("app is running on port 5000");

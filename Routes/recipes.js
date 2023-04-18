@@ -1,6 +1,13 @@
 const express = require("express");
+const { v4: uuidv4 } = require("uuid");
 const router = express.Router();
-const { Recipe, Material } = require("../LocalDatabase/TPMDB");
+const {
+  Recipe,
+  Material,
+  RecipeEquipmentRequirement: RER,
+  TPIBK_RecipeBatchData: recipeBatchData,
+  ProcessClassPhase,
+} = require("../LocalDatabase/TPMDB");
 const enviornment = "Local";
 
 const recipes = Recipe.map((recipe) => {
@@ -136,6 +143,44 @@ router.get("/:RID/:ver", (req, res) => {
       });
   }
   console.timeEnd("Get single recipe");
+});
+
+router.get("/:RID/:ver/procedure", (req, res) => {
+  console.time("Get recipe procedure");
+
+  const selectedProcedure = recipeBatchData.filter((row) => {
+    return (
+      row.Recipe_RID === req.params.RID &&
+      row.Recipe_Version === +req.params.ver
+    );
+  });
+
+  const selectedRER = RER.filter(
+    (row) =>
+      row.Recipe_RID === req.params.RID &&
+      +row.Recipe_Version === +req.params.ver
+  );
+  const procedure = selectedProcedure.map((recipeStep) => {
+    let uuid = uuidv4();
+    return { ...recipeStep, ID: uuid };
+  });
+  const processClassPhaseIDs = [
+    ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
+  ].filter((value) => value !== "NULL");
+
+  const selectedProcessClassPhases = ProcessClassPhase.filter((phase) =>
+    processClassPhaseIDs.includes(phase.ID)
+  );
+
+  const hydratedProcedure = {
+    procedure: procedure,
+    RER: selectedRER,
+    processClassPhases: selectedProcessClassPhases,
+  };
+
+  res.json(hydratedProcedure);
+
+  console.timeEnd("Get recipe procedure");
 });
 
 router.post("/", (req, res) => {

@@ -22,6 +22,9 @@ const PhaseParameter = XLSX.utils.sheet_to_json(
 );
 const PhaseType = XLSX.utils.sheet_to_json(workbook.Sheets["PhaseType"]);
 const ProcessClass = XLSX.utils.sheet_to_json(workbook.Sheets["ProcessClass"]);
+const ProcessClassPhase = XLSX.utils.sheet_to_json(
+  workbook.Sheets["ProcessClassPhase"]
+);
 const Recipe = XLSX.utils.sheet_to_json(workbook.Sheets["Recipe"]);
 const RecipeAllocation = XLSX.utils.sheet_to_json(
   workbook.Sheets["RecipeAllocation"]
@@ -70,6 +73,7 @@ module.exports = {
   PhaseParameter,
   PhaseType,
   ProcessClass,
+  ProcessClassPhase,
   Recipe,
   RecipeAllocation,
   RecipeBatchData,
