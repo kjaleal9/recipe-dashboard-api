@@ -25,7 +25,7 @@ router.get("/", (req, res) => {
 router.get("/required", (req, res) => {
   console.time("Get all process class requirements");
   if (enviornment === "Local") {
-    res.json(RecipeEquipmentRequirement);
+    res.json(RER);
   }
   if (enviornment === "Production") {
     db.select(

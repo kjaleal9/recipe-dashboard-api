@@ -164,6 +164,11 @@ router.get("/:RID/:ver/procedure", (req, res) => {
     let uuid = uuidv4();
     return { ...recipeStep, ID: uuid };
   });
+
+  const sortedProcedure = procedure.sort((a, b) => a.Step - b.Step);
+
+  console.log(sortedProcedure);
+
   const processClassPhaseIDs = [
     ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
   ].filter((value) => value !== "NULL");
@@ -173,7 +178,7 @@ router.get("/:RID/:ver/procedure", (req, res) => {
   );
 
   const hydratedProcedure = {
-    procedure: procedure,
+    procedure: sortedProcedure,
     RER: selectedRER,
     processClassPhases: selectedProcessClassPhases,
   };
