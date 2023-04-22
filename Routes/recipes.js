@@ -1,4 +1,6 @@
+const { request } = require("express");
 const express = require("express");
+const sql = require("mssql");
 const { v4: uuidv4 } = require("uuid");
 const router = express.Router();
 const {
@@ -9,6 +11,22 @@ const {
   ProcessClassPhase,
 } = require("../LocalDatabase/TPMDB");
 const enviornment = "Local";
+
+const config = {
+  user: "TPMDB",
+  password: "TPMDB",
+  server: "localhost", // You can use 'localhost\\instance' to connect to named instance
+  database: "TPMDB",
+  stream: false,
+  options: {
+    trustedConnection: true,
+    encrypt: true,
+    enableArithAbort: true,
+    trustServerCertificate: true,
+  },
+};
+
+const pool = new sql.ConnectionPool(config);
 
 const recipes = Recipe.map((recipe) => {
   var matchingMaterial = Material.find((material) => {
@@ -74,7 +92,31 @@ router.get("/:RID/:ver", (req, res) => {
     );
   }
 
-  console.timeEnd("Get single recipe");
+  if (enviornment === "Production") {
+    pool
+      .connect()
+      .then(() => {
+        console.time("Connection");
+        return pool.request().query(`
+      SELECT id,Recipe_RID,Recipe_Version, TPIBK_Steptype_ID,processclassphase_id,Step,userstring,recipeequipmenttransition_data_id,nextstep,allocation_type_id,latebinding,material_id,ProcessClass_ID
+      FROM TPIBK_RecipeBatchData
+      WHERE Recipe_RID = '${req.params.RID}' AND Recipe_Version = ${+req.params
+          .ver}
+      ORDER BY step`);
+      })
+      .then((result) => {
+        res.json(result.recordsets[0]);
+        console.log("Query result:", result);
+      })
+      .catch((err) => {
+        console.error("Query error:", err);
+      })
+      .finally(() => {
+        pool.close();
+        console.timeEnd("Connection");
+        console.timeEnd("Get single recipe");
+      });
+  }
 });
 
 // GET procedure of a recipe with RID and version as params
