@@ -17,40 +17,18 @@ const recipes = Recipe.map((recipe) => {
   return Object.assign({}, recipe, matchingMaterial);
 });
 
+// GET all versions of every created recipe
 router.get("/", (req, res) => {
   console.time("Get all recipes");
 
   if (enviornment === "Local") {
     res.json(recipes);
   }
-  if (enviornment === "Production") {
-    db.select(
-      "RID",
-      "Version",
-      "RecipeType",
-      "Description",
-      "Status",
-      "ProductID",
-      "Name",
-      "VersionDate",
-      "BatchSizeMin",
-      "BatchSizeMax",
-      "BatchSizeNominal"
-    )
-      .from("Recipe")
-      .leftOuterJoin("Material", function () {
-        this.on("ProductID", "=", "SiteMaterialAlias");
-      })
-      .where("RecipeType", "=", "Master")
-      .orderBy([{ column: "RID" }, { column: "Version", order: "desc" }])
-      .then((data) => {
-        // data.map((recipe, index) => (recipe['ID'] = index));
-        res.json(data);
-      });
-  }
+
   console.timeEnd("Get all recipes");
 });
 
+// GET the highest version recipes
 router.get("/latest", (req, res) => {
   console.time("Get latest recipes");
 
@@ -61,7 +39,6 @@ router.get("/latest", (req, res) => {
         if (!acc[key]) {
           acc[key] = [];
         }
-        // Add object to list for given key's value
         acc[key].push(obj);
         return acc;
       }, {});
@@ -80,36 +57,11 @@ router.get("/latest", (req, res) => {
     const groupedRecipes = groupRecipes(recipes);
     res.json(groupedRecipes);
   }
-  if (enviornment === "Production") {
-    db.select(
-      "RID",
-      "Version",
-      "RecipeType",
-      "Description",
-      "Status",
-      "ProductID",
-      "Name",
-      "VersionDate",
-      "BatchSizeMin",
-      "BatchSizeMax",
-      "BatchSizeNominal"
-    )
-      .from("Recipe")
-      .leftOuterJoin("Material", function () {
-        this.on("ProductID", "=", "SiteMaterialAlias");
-      })
-      .where("RecipeType", "=", "Master")
-      .orderBy([{ column: "RID" }, { column: "Version", order: "desc" }])
-      .then((data) => {
-        //data.map((recipe, index) => (recipe['ID'] = index));
 
-        const groupedRecipes = groupRecipes(data);
-        res.json(groupedRecipes);
-      });
-  }
   console.timeEnd("Get latest recipes");
 });
 
+// GET a single recipe based on RID and version
 router.get("/:RID/:ver", (req, res) => {
   console.time("Get single recipe");
 
@@ -121,30 +73,13 @@ router.get("/:RID/:ver", (req, res) => {
       )
     );
   }
-  if (enviornment === "Production") {
-    db.select(
-      "RID",
-      "Version",
-      "RecipeType",
-      "Description",
-      "Status",
-      "ProductID",
-      "Name",
-      "VersionDate"
-    )
-      .from("Recipe")
-      .leftOuterJoin("Material", function () {
-        this.on("ProductID", "=", "SiteMaterialAlias");
-      })
-      .where("RID", "=", req.params.RID)
-      .andWhere("Version", "=", req.params.ver)
-      .then((data) => {
-        res.json(data);
-      });
-  }
+
   console.timeEnd("Get single recipe");
 });
 
+// GET procedure of a recipe with RID and version as params
+// Return is object that includes procedure, required process classes,
+// and process class phases for the recipe
 router.get("/:RID/:ver/procedure", (req, res) => {
   console.time("Get recipe procedure");
 
@@ -188,21 +123,18 @@ router.get("/:RID/:ver/procedure", (req, res) => {
   console.timeEnd("Get recipe procedure");
 });
 
+// POST add a new recipe
 router.post("/", (req, res) => {
   if (enviornment === "Local") {
     recipes.push(req.body);
     res.json(req.body);
   }
-  if (enviornment === "Production") {
-    db.insert(req.body)
-      .into("Recipe")
-      .then(res.json(req.body))
-      .catch((error) => res.json(error));
-  }
 });
 
+// DELETE a recipe with RID and version in the request body
 router.delete("/", (req, res) => {
   console.time("Delete recipe");
+
   if (enviornment === "Local") {
     const deleteIndex = recipes.recipes.findIndex(
       (recipe) =>
@@ -212,13 +144,7 @@ router.delete("/", (req, res) => {
     recipes.splice(deleteIndex, 1);
     res.json(recipes);
   }
-  if (enviornment === "Production") {
-    db.where({ RID: req.body.RID, Version: req.body.Version })
-      .from("Recipe")
-      .del()
-      .then((data) => res.json(data))
-      .catch((error) => console.log(error));
-  }
+
   console.timeEnd("Delete recipe");
 });
 

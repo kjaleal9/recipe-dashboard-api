@@ -1,0 +1,154 @@
+When navigating to the procedure screen, pass RID and Version
+
+Then call Init , then call LoadClass, then call Load Procedure
+
+Init method:
+    CmdDelete is disabled
+    FrAllocation is disabled => these are the check boxes
+
+    Then initialize comboboxes:
+
+    Fill CmbType with sqlstring = "
+        select id,name 
+        from TPIBK_StepType 
+        order by id"
+
+    Fill CmbMaterial with sqlstring = "
+        select id,ltrim(sitematerialalias) + ' ' + name as name 
+        from material 
+        where not sitematerialalias is null 
+        order by name"
+
+    Enable CmbType and Txt.Step if recipe status is "Registered"
+
+LoadClass method:
+    Fill CmbPClass with Required process classes with sqlstring = "
+        SELECT RER.ID, RER.ProcessClass_Name, case when ROW_NUMBER() over(partition by RER.ProcessClass_Name order by RER.ProcessClass_Name)<2 then RER.ProcessClass_Name else RER.ProcessClass_Name+' #'+ltrim(ROW_NUMBER() over(partition by RER.ProcessClass_Name order by RER.ProcessClass_Name)) end as message,PC.id as pclass_Id, " & _
+        "case coalesce(Equipment_Name,PC.Description) When '' Then PC.Description Else Equipment_Name End As Equipment_Name " & _
+        "FROM RecipeEquipmentRequirement RER INNER JOIN ProcessClass PC ON RER.ProcessClass_Name = PC.Name " & _
+        "WHERE Recipe_RID= '" & BatchID & "and   Recipe_Version=" & BatchVersion
+
+        If CmbPClass is greater than 0 then remove the first item in list???
+
+LoadProcedure method:
+    Fill LstRecipes using sqlstring = "
+        SELECT id,step,message,TPIBK_Steptype_ID,processclassphase_id,step as step1,userstring,recipeequipmenttransition_data_id,nextstep,allocation_type_id,latebinding,material_id,ProcessClass_ID 
+        FROM v_TPIBK_REcipeBatchData 
+        WHERE Recipe_RID = '" & BatchID & "' and Recipe_Version  = '" & BatchVersion & "' 
+        ORDER BY step"
+
+    If recipe status is "Approved" then disable CmdNew,CmdDelete,and CommandButton1
+
+Whenever when a selected step in LstRecipes changes:
+    If recipe is "Approved" then:
+        Enable CmdNew and CmdDelete if it is not a new step and recipe status is "Registered"
+    If no steps then exit
+    If the the TPIBK_StepType_ID is "" then exit
+    Fill CmbType based on the TPIBK_StepType_ID
+    If CmbType = 7 "Operator Confirmation then:
+        Fill TxtString with userstring in LstRecipes column 6
+    Fill CmbPClass based on ProcessClass_ID
+    Fill CmbPType based on ProcessClassPhase_ID
+    Fill CmbMaterial based on Material_ID
+    Fill CmbTransition based on RecipeEquipmentTransition_Data_ID
+    Fill CmbStep based on NextStep (This is only used if StepType is 10 or "Jump")
+    *** Double check how the ChkBox.tag works ***
+    If CmbType = 8 and ChkMatcheck is checked then enable CmbMaterial if recipe status is "Registered"
+    If there are steps then call LoadParameters
+
+LoadParameters function:
+    If CmbType is 1-5 then:
+        Fill the paramters list using sqlstring = "
+            SELECT ID, Name, Description, TPIBK_RecipeParameters_ID, ProcessClassPhase_ID, ValueType, Scaled, MinValue, MaxValue, DefValue, " + _
+                "IsMaterial, MAX(TPIBK_RecipeParameterData_ID) AS TPIBK_RecipeParameterData_ID, SUM(Value) AS Value, MAX(TPIBK_RecipeStepData_ID) " + _
+                "AS TPIBK_RecipeStepData_ID, defEU, Max(EU) As EU " + _
+            "FROM v_TPIBK_RecipeParameters " + _
+            "WHERE (TPIBK_RecipeBatchData_ID IN (0, " & LstRecipes.Column(0, LstRecipes.ListIndex) & ")) " + _
+            "GROUP BY ID, Name, Description, TPIBK_RecipeParameters_ID, ProcessClassPhase_ID, ValueType, MinValue, MaxValue, DefValue, Scaled, " + _
+            "IsMaterial, DefEU " + _
+            "HAVING (ProcessClassPhase_ID = " & CmbPtype.Column(0, CmbPtype.ListIndex) & ") " & _
+            "ORDER BY Description"
+    Else clear the parameters list
+
+When CmbPClass changes:
+    if there are none then do Nothing
+    else fill CmbPtype using sqlstring = "
+        SELECT ProcessClassPhase.ID, ProcessClassPhase.Name, ProcessClassPhase.PhaseType_ID, PhaseType.PhaseCategory_ID 
+        FROM PhaseType INNER JOIN ProcessClassPhase ON PhaseType.ID = ProcessClassPhase.PhaseType_ID 
+        where typebatchkernel=1 and processclass_id=" & CmbPClass.Column(2, CmbPClass.ListIndex) & " 
+        order by name"
+
+        Call EnableSave
+        Call LoadTransitions
+
+LoadTransitions method:
+    Fill CmbTransition using sqlstring = "
+        SELECT TOP (100) PERCENT dbo.ProcessClassTransition.ID, dbo.ProcessClassTransition.Name " + _
+        "FROM dbo.ProcessClassTransition INNER JOIN " + _
+            "dbo.RecipeEquipmentTransition ON dbo.ProcessClassTransition.ID = dbo.RecipeEquipmentTransition.ProcessClassTransition_ID INNER JOIN " + _
+            "dbo.RecipeEquipmentTransition_Data ON " + _
+            "dbo.RecipeEquipmentTransition.ID = dbo.RecipeEquipmentTransition_Data.RecipeEquipmentTransition_ID INNER JOIN " + _
+            "dbo.Transition_Index ON dbo.RecipeEquipmentTransition_Data.Transition_Index_ID = dbo.Transition_Index.ID " + _
+        "WHERE (dbo.ProcessClassTransition.ProcessClass_ID = " & CmbPClass.Column(2, CmbPClass.ListIndex) & ") " + _
+        "GROUP BY dbo.ProcessClassTransition.Name, dbo.ProcessClassTransition.ID " + _
+        "ORDER BY dbo.ProcessClassTransition.Name"
+
+Whenever CmbType changes:
+    Disable FrAllocation, TxtString, CmbStep, CmbTransition, LstParameters, and clear TxtString
+
+    If CmbType = 1 or "Run Phase" then:
+        Enable CmbPClass, CmbPtype, Lstparameters if recipe status is "Registered"
+    If CmbType = 2 or "Start Phase" then:
+        Enable CmbPClass, CmbPtype, Lstparameters if recipe status is "Registered"
+    If CmbType = 3 or "End Phase" then:
+        Enable CmbPClass, CmbPtype if recipe status is "Registered" and disable CmbMaterial
+    If CmbType = 4 or "Check Phase" then:
+        Enable CmbPClass, CmbPtype if recipe status is "Registered" and disable CmbMaterial
+    If CmbType = 5 or "Download Parameters" then:
+        Enable CmbPClass, CmbPtype, Lstparameters if recipe status is "Registered"
+    If CmbType = 6 or "Transition" then:
+        Enable CmbPClass and CmbTransitionCmbPtype if recipe status is "Registered"
+        AND disable CmbPtype, CmbMaterial, and CmbStep
+    If CmbType = 7 or "Operator Confirmation" then:
+        Enable TxtString if recipe status is "Registered"
+        AND disable CmbPClass, CmbPtype, and CmbMaterial
+    If CmbType = 8 or "Allocate Unit" then:
+        Enable CmbPClass if recipe status is "Registered"
+        AND disable CmbPtype
+        AND if CmbType = 8 and ChkMatcheck is True then:
+            Enable CmbMaterial if recipe status is "Registered"
+        Else disable CmbMaterial
+    If CmbType = 9 or "Deallocate Unit" then:
+        Enable CmbPClass recipe status is "Registered"
+        AND disable CmbPtype, and CmbMaterial
+    If CmbType = 10 or "Jump" then:
+        Enable CmbPClass, CmbStep, CmbTransition if recipe status is "Registered"
+        AND disable CmbPtype and CmbMaterial
+    
+    Enable ChkMatcheck and ChkQA if FrAllocation is Enabled
+    Enable CmdTransitions if CmbTransition is enabled
+    Enable LstParameters Label if LstParameters is enabled
+
+    Call EnableCmbMaterial
+
+    Enable Save
+
+
+Enable CmbMaterial if TPIBK_StepType is 8 and the ChkMatcheck box is checked
+    AND recipe status is "Registered"
+    OR if CmbPtype is 1 then enable CmbMaterial if CmbPType is enabled and recipe status is "Registered"
+
+Everytime CmbPClass, CmbPtype, CmbType, TxtStep, CmbMaterial, CmbStep, CmbTransition changes
+    call EnableSave
+
+EnableSave() just enables the save button
+
+Delete step:
+    sqlstring = "delete from TPIBK_REcipeBatchData where id = " & LstRecipes.Column(0, LstRecipes.ListIndex)
+
+
+TODO:
+    Review CmdSave_Click
+    LoadTransitions()
+    CmdTransitions_Click()
+    CommandButton1_Click()
