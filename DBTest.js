@@ -1,30 +1,37 @@
-const sql = require("mssql");
+const sql = require('mssql');
 
-const sqlConfig = {
-  user: "TPEngineer",
-  password: "TPMDB",
-  database: "TPMDB",
-  server: "localhost\\SQLEXPRESS",
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
+const config = {
+  user: 'TPMDB',
+  password: 'TPMDB',
+  server: 'localhost', // You can use 'localhost\\instance' to connect to named instance
+  database: 'TPMDB',
+  stream: false,
   options: {
-    trustServerCertificate: false, // change to true for local dev / self-signed certs
-  },
+    trustedConnection: true,
+    encrypt: true,
+    enableArithAbort: true,
+    trustServerCertificate: true,}
+
 };
 
-const connectDB = async () => {
+const connect = async () => {
   try {
-    // make sure that any items are correctly URL encoded in the connection string
-    await sql.connect(sqlConfig);
-    const result = await sql.query`select * from Phase`;
-    console.dir(result);
+    let pool = await sql.connect(config);
+    let result1 = await pool
+      .request()
+
+      .query('select * from Phase');
+
+    console.dir(result1);
   } catch (err) {
     // ... error checks
     console.error(err);
   }
 };
 
-connectDB();
+connect()
+
+sql.on('error', err => {
+  // ... error handler
+  console.log('ERRRO');
+});
