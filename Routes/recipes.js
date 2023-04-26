@@ -1,4 +1,3 @@
-const { request } = require("express");
 const express = require("express");
 const sql = require("mssql");
 const { v4: uuidv4 } = require("uuid");
@@ -10,7 +9,8 @@ const {
   TPIBK_RecipeBatchData: recipeBatchData,
   ProcessClassPhase,
 } = require("../LocalDatabase/TPMDB");
-const enviornment = "Local";
+
+const enviornment = "Production";
 
 const config = {
   user: "TPMDB",
@@ -39,9 +39,7 @@ const recipes = Recipe.map((recipe) => {
 router.get("/", (req, res) => {
   console.time("Get all recipes");
 
-  if (enviornment === "Local") {
-    res.json(recipes);
-  }
+  res.json(recipes);
 
   console.timeEnd("Get all recipes");
 });
@@ -96,24 +94,35 @@ router.get("/:RID/:ver", (req, res) => {
     pool
       .connect()
       .then(() => {
-        console.time("Connection");
+        console.time("Connection closed");
         return pool.request().query(`
-      SELECT id,Recipe_RID,Recipe_Version, TPIBK_Steptype_ID,processclassphase_id,Step,userstring,recipeequipmenttransition_data_id,nextstep,allocation_type_id,latebinding,material_id,ProcessClass_ID
+      SELECT 
+        ID,
+        Recipe_RID,
+        Recipe_Version, 
+        TPIBK_Steptype_ID,
+        ProcessClassPhase_ID,
+        Step,
+        RecipeEquipmentTransition_Data_ID,
+        NextStep,
+        Allocation_Type_ID,
+        LateBinding,
+        Material_ID,
+        ProcessClass_ID
       FROM TPIBK_RecipeBatchData
-      WHERE Recipe_RID = '${req.params.RID}' AND Recipe_Version = ${+req.params
-          .ver}
+      WHERE Recipe_RID = '${req.params.RID}' 
+        AND Recipe_Version = ${+req.params.ver}
       ORDER BY step`);
       })
       .then((result) => {
         res.json(result.recordsets[0]);
-        console.log("Query result:", result);
       })
       .catch((err) => {
         console.error("Query error:", err);
       })
       .finally(() => {
         pool.close();
-        console.timeEnd("Connection");
+        console.timeEnd("Connection closed");
         console.timeEnd("Get single recipe");
       });
   }
@@ -122,47 +131,172 @@ router.get("/:RID/:ver", (req, res) => {
 // GET procedure of a recipe with RID and version as params
 // Return is object that includes procedure, required process classes,
 // and process class phases for the recipe
-router.get("/:RID/:ver/procedure", (req, res) => {
-  console.time("Get recipe procedure");
+router.get("/procedure/:RID/:ver", (req, res) => {
+  console.time("Get recipe procedure based on RID and Version");
 
-  const selectedProcedure = recipeBatchData.filter((row) => {
-    return (
-      row.Recipe_RID === req.params.RID &&
-      row.Recipe_Version === +req.params.ver
+  if (enviornment === "Local") {
+    const selectedProcedure = recipeBatchData.filter((row) => {
+      return (
+        row.Recipe_RID === req.params.RID &&
+        row.Recipe_Version === +req.params.ver
+      );
+    });
+
+    const selectedRER = RER.filter(
+      (row) =>
+        row.Recipe_RID === req.params.RID &&
+        +row.Recipe_Version === +req.params.ver
     );
-  });
 
-  const selectedRER = RER.filter(
-    (row) =>
-      row.Recipe_RID === req.params.RID &&
-      +row.Recipe_Version === +req.params.ver
-  );
-  const procedure = selectedProcedure.map((recipeStep) => {
-    let uuid = uuidv4();
-    return { ...recipeStep, ID: uuid };
-  });
+    const procedure = selectedProcedure.map((recipeStep) => {
+      let uuid = uuidv4();
+      return { ...recipeStep, ID: uuid };
+    });
 
-  const sortedProcedure = procedure.sort((a, b) => a.Step - b.Step);
+    const sortedProcedure = procedure.sort((a, b) => a.Step - b.Step);
 
-  console.log(sortedProcedure);
+    const processClassPhaseIDs = [
+      ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
+    ].filter((value) => value !== "NULL");
 
-  const processClassPhaseIDs = [
-    ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
-  ].filter((value) => value !== "NULL");
+    const selectedProcessClassPhases = ProcessClassPhase.filter((phase) =>
+      processClassPhaseIDs.includes(phase.ID)
+    );
 
-  const selectedProcessClassPhases = ProcessClassPhase.filter((phase) =>
-    processClassPhaseIDs.includes(phase.ID)
-  );
+    const hydratedProcedure = {
+      procedure: sortedProcedure,
+      RER: selectedRER,
+      processClassPhases: selectedProcessClassPhases,
+    };
 
-  const hydratedProcedure = {
-    procedure: sortedProcedure,
-    RER: selectedRER,
-    processClassPhases: selectedProcessClassPhases,
-  };
+    res.json(hydratedProcedure);
+  }
 
-  res.json(hydratedProcedure);
+  if (enviornment === "Production") {
+    pool
+      .connect()
+      .then(() => {
+        console.time("Connection closed");
+        return pool.request().query(` 
+        SELECT 
+          ID,
+          Step,
+          Message,
+          TPIBK_StepType_ID,
+          ProcessClassPhase_ID,
+          Step AS Step1,
+          UserString,
+          RecipeEquipmentTransition_Data_ID,
+          NextStep,
+          Allocation_Type_ID,
+          LateBinding,
+          Material_ID,
+          ProcessClass_ID 
+        FROM v_TPIBK_RecipeBatchData 
+        WHERE Recipe_RID = '${req.params.RID}' 
+        AND Recipe_Version = ${+req.params.ver}
+        ORDER BY Step`);
+      })
+      .then((result) => {
+        res.json({ procedure: result.recordsets[0] });
+      })
+      .catch((err) => {
+        console.error("Query error:", err);
+      })
+      .finally(() => {
+        pool.close();
+        console.timeEnd("Connection closed");
+        console.timeEnd("Get recipe procedure based on RID and Version");
+      });
+  }
+});
 
-  console.timeEnd("Get recipe procedure");
+router.get("/step-types", (req, res) => {
+  console.time("Get recipe step types");
+  if (enviornment === "Production") {
+    pool
+      .connect()
+      .then(() => {
+        console.time("Connection closed");
+        return pool.request().query(`
+        SELECT 
+          ID,
+          Name 
+        FROM TPIBK_StepType 
+        ORDER BY ID
+      `);
+      })
+      .then((result) => {
+        res.json(result.recordsets[0]);
+      })
+      .catch((err) => {
+        console.error("Query error:", err);
+      })
+      .finally(() => {
+        pool.close();
+        console.timeEnd("Connection closed");
+        console.timeEnd("Get recipe step types");
+      });
+  }
+});
+
+router.get("/parameters/:BatchID/:PClassID", (req, res) => {
+  console.time("Get parameters based on recipe ID and process class phase ID");
+  if (enviornment === "Production") {
+    pool
+      .connect()
+      .then(() => {
+        console.time("Connection closed");
+        return pool.request().query(` 
+        SELECT 
+          ID, 
+          Name, 
+          Description, 
+          TPIBK_RecipeParameters_ID, 
+          ProcessClassPhase_ID, 
+          ValueType, 
+          Scaled, 
+          MinValue, 
+          MaxValue, 
+          DefValue,
+          IsMaterial, 
+          MAX(TPIBK_RecipeParameterData_ID) AS TPIBK_RecipeParameterData_ID, 
+          SUM(Value) AS Value, 
+          MAX(TPIBK_RecipeStepData_ID) AS TPIBK_RecipeStepData_ID, 
+          DefEU, 
+          Max(EU) As EU
+        FROM v_TPIBK_RecipeParameters
+        WHERE (TPIBK_RecipeBatchData_ID IN (0, ${req.params.BatchID}))
+        GROUP BY 
+          ID, 
+          Name, 
+          Description, 
+          TPIBK_RecipeParameters_ID, 
+          ProcessClassPhase_ID, 
+          ValueType, 
+          MinValue, 
+          MaxValue, 
+          DefValue, 
+          Scaled,
+          IsMaterial, 
+          DefEU
+        HAVING (ProcessClassPhase_ID = ${req.params.PClassID}) 
+        ORDER BY Description`);
+      })
+      .then((result) => {
+        res.json(result.recordsets[0]);
+      })
+      .catch((err) => {
+        console.error("Query error:", err);
+      })
+      .finally(() => {
+        pool.close();
+        console.timeEnd("Connection closed");
+        console.timeEnd(
+          "Get parameters based on recipe ID and process class phase ID"
+        );
+      });
+  }
 });
 
 // POST add a new recipe

@@ -22,20 +22,43 @@ Init method:
     Enable CmbType and Txt.Step if recipe status is "Registered"
 
 LoadClass method:
-    Fill CmbPClass with Required process classes with sqlstring = "
-        SELECT RER.ID, RER.ProcessClass_Name, case when ROW_NUMBER() over(partition by RER.ProcessClass_Name order by RER.ProcessClass_Name)<2 then RER.ProcessClass_Name else RER.ProcessClass_Name+' #'+ltrim(ROW_NUMBER() over(partition by RER.ProcessClass_Name order by RER.ProcessClass_Name)) end as message,PC.id as pclass_Id, " & _
-        "case coalesce(Equipment_Name,PC.Description) When '' Then PC.Description Else Equipment_Name End As Equipment_Name " & _
-        "FROM RecipeEquipmentRequirement RER INNER JOIN ProcessClass PC ON RER.ProcessClass_Name = PC.Name " & _
-        "WHERE Recipe_RID= '" & BatchID & "and   Recipe_Version=" & BatchVersion
-
-        If CmbPClass is greater than 0 then remove the first item in list???
+    Fill CmbPClass with Required process classes with sqlstring = 
+        SELECT 
+            RER.ID, 
+            RER.ProcessClass_Name, 
+            CASE WHEN ROW_NUMBER() 
+                OVER(PARTITION BY RER.ProcessClass_Name ORDER BY RER.ProcessClass_Name) <2 
+                THEN RER.ProcessClass_Name 
+                ELSE RER.ProcessClass_Name+' #'+LTRIM(
+                    ROW_NUMBER() 
+                    OVER(PARTITION BY RER.ProcessClass_Name ORDER BY RER.ProcessClass_Name)) 
+                END AS Message,PC.ID as PClass_ID
+            CASE COALESCE(Equipment_Name,PC.Description) When '' 
+                THEN PC.Description 
+                ELSE Equipment_Name 
+                END AS Equipment_Name
+        FROM RecipeEquipmentRequirement RER INNER JOIN ProcessClass PC ON RER.ProcessClass_Name = PC.Name
+        WHERE Recipe_RID = BatchID AND Recipe_Version = BatchVersion
 
 LoadProcedure method:
     Fill LstRecipes using sqlstring = "
-        SELECT id,step,message,TPIBK_Steptype_ID,processclassphase_id,step as step1,userstring,recipeequipmenttransition_data_id,nextstep,allocation_type_id,latebinding,material_id,ProcessClass_ID 
-        FROM v_TPIBK_REcipeBatchData 
-        WHERE Recipe_RID = '" & BatchID & "' and Recipe_Version  = '" & BatchVersion & "' 
-        ORDER BY step"
+        SELECT 
+            ID,
+            Step,
+            Message,
+            TPIBK_StepType_ID,
+            ProcessClassPhase_ID,
+            Step AS Step1,
+            UserString,
+            RecipeEquipmentTransition_Data_ID,
+            NextStep,
+            Allocation_Type_ID,
+            LateBinding,
+            Material_ID,
+            ProcessClass_ID 
+        FROM v_TPIBK_RecipeBatchData 
+        WHERE Recipe_RID = BatchID AND Recipe_Version = BatchVersion
+        ORDER BY Step"
 
     If recipe status is "Approved" then disable CmdNew,CmdDelete,and CommandButton1
 
@@ -59,24 +82,54 @@ Whenever when a selected step in LstRecipes changes:
 LoadParameters function:
     If CmbType is 1-5 then:
         Fill the paramters list using sqlstring = "
-            SELECT ID, Name, Description, TPIBK_RecipeParameters_ID, ProcessClassPhase_ID, ValueType, Scaled, MinValue, MaxValue, DefValue, " + _
-                "IsMaterial, MAX(TPIBK_RecipeParameterData_ID) AS TPIBK_RecipeParameterData_ID, SUM(Value) AS Value, MAX(TPIBK_RecipeStepData_ID) " + _
-                "AS TPIBK_RecipeStepData_ID, defEU, Max(EU) As EU " + _
-            "FROM v_TPIBK_RecipeParameters " + _
-            "WHERE (TPIBK_RecipeBatchData_ID IN (0, " & LstRecipes.Column(0, LstRecipes.ListIndex) & ")) " + _
-            "GROUP BY ID, Name, Description, TPIBK_RecipeParameters_ID, ProcessClassPhase_ID, ValueType, MinValue, MaxValue, DefValue, Scaled, " + _
-            "IsMaterial, DefEU " + _
-            "HAVING (ProcessClassPhase_ID = " & CmbPtype.Column(0, CmbPtype.ListIndex) & ") " & _
-            "ORDER BY Description"
+            SELECT 
+                ID, 
+                Name, 
+                Description, 
+                TPIBK_RecipeParameters_ID, 
+                ProcessClassPhase_ID, 
+                ValueType, 
+                Scaled, 
+                MinValue, 
+                MaxValue, 
+                DefValue,
+                IsMaterial, 
+                MAX(TPIBK_RecipeParameterData_ID) AS TPIBK_RecipeParameterData_ID, 
+                SUM(Value) AS Value, 
+                MAX(TPIBK_RecipeStepData_ID) AS TPIBK_RecipeStepData_ID, 
+                DefEU, 
+                Max(EU) As EU
+            FROM v_TPIBK_RecipeParameters
+            WHERE (TPIBK_RecipeBatchData_ID IN (0, " & LstRecipes.Column(0, LstRecipes.ListIndex) & ")) // Recipe_RID
+            GROUP BY 
+                ID, 
+                Name, 
+                Description, 
+                TPIBK_RecipeParameters_ID, 
+                ProcessClassPhase_ID, 
+                ValueType, 
+                MinValue, 
+                MaxValue, 
+                DefValue, 
+                Scaled,
+                IsMaterial, 
+                DefEU
+            HAVING (ProcessClassPhase_ID = " & CmbPtype.Column(0, CmbPtype.ListIndex) & ") 
+            ORDER BY Description
     Else clear the parameters list
 
 When CmbPClass changes:
     if there are none then do Nothing
     else fill CmbPtype using sqlstring = "
-        SELECT ProcessClassPhase.ID, ProcessClassPhase.Name, ProcessClassPhase.PhaseType_ID, PhaseType.PhaseCategory_ID 
-        FROM PhaseType INNER JOIN ProcessClassPhase ON PhaseType.ID = ProcessClassPhase.PhaseType_ID 
-        where typebatchkernel=1 and processclass_id=" & CmbPClass.Column(2, CmbPClass.ListIndex) & " 
-        order by name"
+        SELECT 
+            ProcessClassPhase.ID, 
+            ProcessClassPhase.Name, 
+            ProcessClassPhase.PhaseType_ID, 
+            PhaseType.PhaseCategory_ID 
+        FROM PhaseType 
+            INNER JOIN ProcessClassPhase ON PhaseType.ID = ProcessClassPhase.PhaseType_ID 
+        WHERE TypeBatchKernel=1 and processclass_id=" & CmbPClass.Column(2, CmbPClass.ListIndex) & " 
+        ORDER BY Name"
 
         Call EnableSave
         Call LoadTransitions
@@ -133,6 +186,9 @@ Whenever CmbType changes:
 
     Enable Save
 
+When CmbPtype changes:
+    Call EnableCmbMaterial
+    Call EnableSave
 
 Enable CmbMaterial if TPIBK_StepType is 8 and the ChkMatcheck box is checked
     AND recipe status is "Registered"
@@ -152,3 +208,4 @@ TODO:
     LoadTransitions()
     CmdTransitions_Click()
     CommandButton1_Click()
+    LoadClass()
