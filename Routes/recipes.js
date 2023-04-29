@@ -198,7 +198,11 @@ router.get("/procedure/:RID/:ver", (req, res) => {
         ORDER BY Step`);
       })
       .then((result) => {
-        res.json({ procedure: result.recordsets[0] });
+        const procedure = result.recordsets[0].map((recipeStep) => {
+          let uuid = uuidv4();
+          return { ...recipeStep, ID: uuid };
+        });
+        res.json(procedure);
       })
       .catch((err) => {
         console.error("Query error:", err);
