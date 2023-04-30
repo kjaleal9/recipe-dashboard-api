@@ -67,6 +67,7 @@ router.get("/required/:RID/:ver", (req, res) => {
         SELECT 
         RER.ID, 
         RER.ProcessClass_Name, 
+        IsMainBatchUnit,
         CASE WHEN ROW_NUMBER() 
             OVER(PARTITION BY RER.ProcessClass_Name ORDER BY RER.ProcessClass_Name) <2 
             THEN RER.ProcessClass_Name 

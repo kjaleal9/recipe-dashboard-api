@@ -214,6 +214,88 @@ router.get("/procedure/:RID/:ver", (req, res) => {
       });
   }
 });
+router.get("/procedure/:RID/:ver/condense", (req, res) => {
+  console.time("Get recipe procedure based on RID and Version");
+
+  if (enviornment === "Local") {
+    const selectedProcedure = recipeBatchData.filter((row) => {
+      return (
+        row.Recipe_RID === req.params.RID &&
+        row.Recipe_Version === +req.params.ver
+      );
+    });
+
+    const selectedRER = RER.filter(
+      (row) =>
+        row.Recipe_RID === req.params.RID &&
+        +row.Recipe_Version === +req.params.ver
+    );
+
+    const procedure = selectedProcedure.map((recipeStep) => {
+      let uuid = uuidv4();
+      return { ...recipeStep, ID: uuid };
+    });
+
+    const sortedProcedure = procedure.sort((a, b) => a.Step - b.Step);
+
+    const processClassPhaseIDs = [
+      ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
+    ].filter((value) => value !== "NULL");
+
+    const selectedProcessClassPhases = ProcessClassPhase.filter((phase) =>
+      processClassPhaseIDs.includes(phase.ID)
+    );
+
+    const hydratedProcedure = {
+      procedure: sortedProcedure,
+      RER: selectedRER,
+      processClassPhases: selectedProcessClassPhases,
+    };
+
+    res.json(hydratedProcedure);
+  }
+
+  if (enviornment === "Production") {
+    pool
+      .connect()
+      .then(() => {
+        console.time("Connection closed");
+        return pool.request().query(` 
+        SELECT 
+          ID,
+          Step,
+          Message,
+          TPIBK_StepType_ID,
+          ProcessClassPhase_ID,
+          Step AS Step1,
+          UserString,
+          RecipeEquipmentTransition_Data_ID,
+          NextStep,
+          Allocation_Type_ID,
+          LateBinding,
+          Material_ID,
+          ProcessClass_ID 
+        FROM v_TPIBK_RecipeBatchData 
+        WHERE Recipe_RID = '${req.params.RID}' 
+        AND Recipe_Version = ${+req.params.ver}
+        ORDER BY Step`);
+      })
+      .then((result) => {
+        const procedure = result.recordsets[0].map((recipeStep) => {
+          return { step: recipeStep.Step, message: recipeStep.Message };
+        });
+        res.json(procedure);
+      })
+      .catch((err) => {
+        console.error("Query error:", err);
+      })
+      .finally(() => {
+        pool.close();
+        console.timeEnd("Connection closed");
+        console.timeEnd("Get recipe procedure based on RID and Version");
+      });
+  }
+});
 
 router.get("/step-types", (req, res) => {
   console.time("Get recipe step types");
