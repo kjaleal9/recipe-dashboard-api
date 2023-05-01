@@ -8,22 +8,6 @@ const {
 } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
-const config = {
-  user: "TPMDB",
-  password: "TPMDB",
-  server: "localhost", // You can use 'localhost\\instance' to connect to named instance
-  database: "TPMDB",
-  stream: false,
-  options: {
-    trustedConnection: true,
-    encrypt: true,
-    enableArithAbort: true,
-    trustServerCertificate: true,
-  },
-};
-
-const pool = new sql.ConnectionPool(config);
-
 // GET full database of process classes
 router.get("/", (req, res) => {
   console.time("Get all process classes");
@@ -44,7 +28,7 @@ router.get("/required", (req, res) => {
 
 // GET the required process classes for one recipe.
 // Must provide RID and version
-router.get("/required/:RID/:ver", (req, res) => {
+router.get("/required/:RID/:ver", async (req, res) => {
   console.time("Get required process classes by RID and Version");
 
   if (enviornment === "Local") {
@@ -59,11 +43,10 @@ router.get("/required/:RID/:ver", (req, res) => {
   }
 
   if (enviornment === "Production") {
-    pool
-      .connect()
-      .then(() => {
-        console.time("Connection closed");
-        return pool.request().query(`
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(`  
         SELECT 
         RER.ID, 
         RER.ProcessClass_Name, 
@@ -81,21 +64,16 @@ router.get("/required/:RID/:ver", (req, res) => {
             END AS Equipment_Name
         FROM RecipeEquipmentRequirement RER INNER JOIN ProcessClass PC ON RER.ProcessClass_Name = PC.Name
         WHERE Recipe_RID = '${req.params.RID}' AND Recipe_Version = ${+req
-          .params.ver}
+        .params.ver}
       `);
-      })
-      .then((result) => {
-        res.json(result.recordsets[0]);
-      })
-      .catch((err) => {
-        console.error("Query error:", err);
-      })
-      .finally(() => {
-        pool.close();
-        console.timeEnd("Connection closed");
-        console.timeEnd("Get required process classes by RID and Version");
-      });
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
   }
+  console.timeEnd("Get required process classes by RID and Version");
 });
 
 // GET full database of process class phases

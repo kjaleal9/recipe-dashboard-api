@@ -1,7 +1,8 @@
 const express = require("express");
-const sql = require("mssql");
 const { v4: uuidv4 } = require("uuid");
 const router = express.Router();
+const sql = require("mssql");
+
 const {
   Recipe,
   Material,
@@ -12,22 +13,6 @@ const {
 
 const enviornment = "Production";
 
-const config = {
-  user: "TPMDB",
-  password: "TPMDB",
-  server: "localhost", // You can use 'localhost\\instance' to connect to named instance
-  database: "TPMDB",
-  stream: false,
-  options: {
-    trustedConnection: true,
-    encrypt: true,
-    enableArithAbort: true,
-    trustServerCertificate: true,
-  },
-};
-
-const pool = new sql.ConnectionPool(config);
-
 const recipes = Recipe.map((recipe) => {
   var matchingMaterial = Material.find((material) => {
     return material.SiteMaterialAlias === recipe.ProductID;
@@ -36,10 +21,46 @@ const recipes = Recipe.map((recipe) => {
 });
 
 // GET all versions of every created recipe
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   console.time("Get all recipes");
+  if (enviornment === "Local") {
+    const recipeExcelDates = Recipe.map((recipe) => {
+      return {
+        ...recipe,
+        VersionDate: (recipe.VersionDate - 25569) * 86400 * 1000,
+      };
+    });
 
-  res.json(recipes);
+    res.json(Recipe);
+  }
+
+  if (enviornment === "Production") {
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(` 
+        SELECT *
+        FROM Recipe
+       `);
+      const versionToNum = result.recordsets[0].map((recipe) => {
+        return { ...recipe, Version: +recipe.Version };
+      });
+
+      const recipesWithMaterial = versionToNum.map((recipe) => {
+        var matchingMaterial = Material.find((material) => {
+          return (
+            material.SiteMaterialAlias.toString() ===
+            recipe.ProductID.toString()
+          );
+        });
+        return Object.assign({}, recipe, matchingMaterial);
+      });
+      res.json(recipesWithMaterial);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+  }
 
   console.timeEnd("Get all recipes");
 });
@@ -78,7 +99,7 @@ router.get("/latest", (req, res) => {
 });
 
 // GET a single recipe based on RID and version
-router.get("/:RID/:ver", (req, res) => {
+router.get("/:RID/:ver", async (req, res) => {
   console.time("Get single recipe");
 
   if (enviornment === "Local") {
@@ -89,49 +110,44 @@ router.get("/:RID/:ver", (req, res) => {
       )
     );
   }
-
   if (enviornment === "Production") {
-    pool
-      .connect()
-      .then(() => {
-        console.time("Connection closed");
-        return pool.request().query(`
-      SELECT 
-        ID,
-        Recipe_RID,
-        Recipe_Version, 
-        TPIBK_Steptype_ID,
-        ProcessClassPhase_ID,
-        Step,
-        RecipeEquipmentTransition_Data_ID,
-        NextStep,
-        Allocation_Type_ID,
-        LateBinding,
-        Material_ID,
-        ProcessClass_ID
-      FROM TPIBK_RecipeBatchData
-      WHERE Recipe_RID = '${req.params.RID}' 
-        AND Recipe_Version = ${+req.params.ver}
-      ORDER BY step`);
-      })
-      .then((result) => {
-        res.json(result.recordsets[0]);
-      })
-      .catch((err) => {
-        console.error("Query error:", err);
-      })
-      .finally(() => {
-        pool.close();
-        console.timeEnd("Connection closed");
-        console.timeEnd("Get single recipe");
-      });
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(
+        `
+         SELECT 
+           ID,
+           Recipe_RID,
+           Recipe_Version, 
+           TPIBK_Steptype_ID,
+           ProcessClassPhase_ID,
+           Step,
+           RecipeEquipmentTransition_Data_ID,
+           NextStep,
+           Allocation_Type_ID,
+           LateBinding,
+           Material_ID,
+           ProcessClass_ID
+         FROM TPIBK_RecipeBatchData
+         WHERE Recipe_RID = '${req.params.RID}' 
+           AND Recipe_Version = ${+req.params.ver}
+         ORDER BY step`
+      );
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+    console.timeEnd("Get single recipe");
   }
 });
 
 // GET procedure of a recipe with RID and version as params
 // Return is object that includes procedure, required process classes,
 // and process class phases for the recipe
-router.get("/procedure/:RID/:ver", (req, res) => {
+router.get("/procedure/:RID/:ver", async (req, res) => {
   console.time("Get recipe procedure based on RID and Version");
 
   if (enviornment === "Local") {
@@ -173,11 +189,10 @@ router.get("/procedure/:RID/:ver", (req, res) => {
   }
 
   if (enviornment === "Production") {
-    pool
-      .connect()
-      .then(() => {
-        console.time("Connection closed");
-        return pool.request().query(` 
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(` 
         SELECT 
           ID,
           Step,
@@ -196,26 +211,18 @@ router.get("/procedure/:RID/:ver", (req, res) => {
         WHERE Recipe_RID = '${req.params.RID}' 
         AND Recipe_Version = ${+req.params.ver}
         ORDER BY Step`);
-      })
-      .then((result) => {
-        const procedure = result.recordsets[0].map((recipeStep) => {
-          let uuid = uuidv4();
-          return { ...recipeStep, ID: uuid };
-        });
-        res.json(procedure);
-      })
-      .catch((err) => {
-        console.error("Query error:", err);
-      })
-      .finally(() => {
-        pool.close();
-        console.timeEnd("Connection closed");
-        console.timeEnd("Get recipe procedure based on RID and Version");
-      });
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+    console.timeEnd("Get recipe procedure based on RID and Version");
   }
 });
-router.get("/procedure/:RID/:ver/condense", (req, res) => {
-  console.time("Get recipe procedure based on RID and Version");
+
+router.get("/procedure/:RID/:ver/condense", async (req, res) => {
+  console.time("Get condensed recipe procedure based on RID and Version");
 
   if (enviornment === "Local") {
     const selectedProcedure = recipeBatchData.filter((row) => {
@@ -256,84 +263,58 @@ router.get("/procedure/:RID/:ver/condense", (req, res) => {
   }
 
   if (enviornment === "Production") {
-    pool
-      .connect()
-      .then(() => {
-        console.time("Connection closed");
-        return pool.request().query(` 
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(`  
         SELECT 
-          ID,
           Step,
-          Message,
-          TPIBK_StepType_ID,
-          ProcessClassPhase_ID,
-          Step AS Step1,
-          UserString,
-          RecipeEquipmentTransition_Data_ID,
-          NextStep,
-          Allocation_Type_ID,
-          LateBinding,
-          Material_ID,
-          ProcessClass_ID 
+          Message
         FROM v_TPIBK_RecipeBatchData 
         WHERE Recipe_RID = '${req.params.RID}' 
         AND Recipe_Version = ${+req.params.ver}
         ORDER BY Step`);
-      })
-      .then((result) => {
-        const procedure = result.recordsets[0].map((recipeStep) => {
-          return { step: recipeStep.Step, message: recipeStep.Message };
-        });
-        res.json(procedure);
-      })
-      .catch((err) => {
-        console.error("Query error:", err);
-      })
-      .finally(() => {
-        pool.close();
-        console.timeEnd("Connection closed");
-        console.timeEnd("Get recipe procedure based on RID and Version");
-      });
+
+ 
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+    console.timeEnd("Get condensed recipe procedure based on RID and Version");
   }
 });
 
-router.get("/step-types", (req, res) => {
+router.get("/step-types", async (req, res) => {
   console.time("Get recipe step types");
   if (enviornment === "Production") {
-    pool
-      .connect()
-      .then(() => {
-        console.time("Connection closed");
-        return pool.request().query(`
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(`  
         SELECT 
           ID,
           Name 
         FROM TPIBK_StepType 
         ORDER BY ID
       `);
-      })
-      .then((result) => {
-        res.json(result.recordsets[0]);
-      })
-      .catch((err) => {
-        console.error("Query error:", err);
-      })
-      .finally(() => {
-        pool.close();
-        console.timeEnd("Connection closed");
-        console.timeEnd("Get recipe step types");
-      });
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
   }
+  console.timeEnd("Get recipe step types");
 });
 
-router.get("/parameters/:BatchID/:PClassID", (req, res) => {
+router.get("/parameters/:BatchID/:PClassID", async (req, res) => {
   console.time("Get parameters based on recipe ID and process class phase ID");
   if (enviornment === "Production") {
-    pool
-      .connect()
-      .then(() => {
-        console.time("Connection closed");
-        return pool.request().query(` 
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(`  
         SELECT 
           ID, 
           Name, 
@@ -368,20 +349,15 @@ router.get("/parameters/:BatchID/:PClassID", (req, res) => {
           DefEU
         HAVING (ProcessClassPhase_ID = ${req.params.PClassID}) 
         ORDER BY Description`);
-      })
-      .then((result) => {
-        res.json(result.recordsets[0]);
-      })
-      .catch((err) => {
-        console.error("Query error:", err);
-      })
-      .finally(() => {
-        pool.close();
-        console.timeEnd("Connection closed");
-        console.timeEnd(
-          "Get parameters based on recipe ID and process class phase ID"
-        );
-      });
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+    console.timeEnd(
+      "Get parameters based on recipe ID and process class phase ID"
+    );
   }
 });
 
