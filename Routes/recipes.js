@@ -27,6 +27,8 @@ router.get("/", async (req, res) => {
     const recipeExcelDates = Recipe.map((recipe) => {
       return {
         ...recipe,
+
+        // Convert excel date to normal date
         VersionDate: (recipe.VersionDate - 25569) * 86400 * 1000,
       };
     });
@@ -42,6 +44,7 @@ router.get("/", async (req, res) => {
         SELECT *
         FROM Recipe
        `);
+
       const versionToNum = result.recordsets[0].map((recipe) => {
         return { ...recipe, Version: +recipe.Version };
       });
@@ -55,6 +58,8 @@ router.get("/", async (req, res) => {
         });
         return Object.assign({}, recipe, matchingMaterial);
       });
+
+      res.status(200);
       res.json(recipesWithMaterial);
     } catch (err) {
       res.status(500);
@@ -69,7 +74,7 @@ router.get("/", async (req, res) => {
 router.get("/latest", (req, res) => {
   console.time("Get latest recipes");
 
-  function groupRecipes(rows) {
+  const groupRecipes = (rows) => {
     function groupBy(objectArray, property) {
       return objectArray.reduce((acc, obj) => {
         const key = obj[property];
@@ -221,6 +226,7 @@ router.get("/procedure/:RID/:ver", async (req, res) => {
   }
 });
 
+// GET route returns Step numbers and messages of a recipe in the ProcedureModal component
 router.get("/procedure/:RID/:ver/condense", async (req, res) => {
   console.time("Get condensed recipe procedure based on RID and Version");
 
@@ -275,7 +281,6 @@ router.get("/procedure/:RID/:ver/condense", async (req, res) => {
         AND Recipe_Version = ${+req.params.ver}
         ORDER BY Step`);
 
- 
       res.json(result.recordsets[0]);
     } catch (err) {
       res.status(500);

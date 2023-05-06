@@ -14,44 +14,26 @@ const config = {
   },
 };
 
-const pool = new sql.ConnectionPool(config);
+const connection = new sql.ConnectionPool(config);
 
-const testString = "BT0512_TeaMixing";
-const testVersion = 1;
-
-// Add an event listener for the 'error' event
-pool.on("error", (err) => {
-  console.error("Error occurred:", err);
-});
-
-// Add an event listener for the 'connect' event
-pool.on("connect", (conn) => {
-  console.log("Connection established:", conn);
-});
-
-// Add an event listener for the 'disconnect' event
-pool.on("disconnect", (conn) => {
-  console.log("Connection closed:", conn);
-});
-
-// Use the connection pool to execute a SQL statement
-pool
+connection
   .connect()
   .then(() => {
-    console.time("Connection");
-    return pool.request().query(`
-    SELECT id,Recipe_RID,Recipe_Version, TPIBK_Steptype_ID,processclassphase_id,Step,userstring,recipeequipmenttransition_data_id,nextstep,allocation_type_id,latebinding,material_id,ProcessClass_ID
-    FROM TPIBK_RecipeBatchData
-    WHERE Recipe_RID = '${testString}' AND Recipe_Version = ${testVersion}
-    ORDER BY step`);
-  })
-  .then((result) => {
-    console.log("Query result:", result);
+    const request = new sql.Request(connection);
+    request.on("done", (returnValue) => {
+      console.log("Query completed successfully");
+      console.log(returnValue.returnValue);
+      connection.close();
+    });
+
+    request.on("error", (err) => {
+      console.log("An error occurred while executing the query");
+      console.log(err);
+      connection.close();
+    });
+    request.query("SELECT * FROM Phase");
   })
   .catch((err) => {
-    console.error("Query error:", err);
-  })
-  .finally(() => {
-    pool.close();
-    console.timeEnd("Connection");
+    console.log("An error occurred while connecting to the database");
+    console.log(err);
   });
