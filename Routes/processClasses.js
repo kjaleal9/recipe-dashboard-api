@@ -77,12 +77,24 @@ router.get("/required/:RID/:ver", async (req, res) => {
 });
 
 // GET full database of process class phases
-router.get("/phases", (req, res) => {
+router.get("/phases", async (req, res) => {
   console.time("Get all process class phases");
 
-  res.json(ProcessClassPhase);
+  if (enviornment === "Production") {
+    try {
+      const request = new sql.Request(req.app.locals.db);
 
-  console.timeEnd("Get all process class phases");
+      const result = await request.query(`  
+        SELECT *
+        FROM ProcessClassPhase
+      `);
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+  }
 });
 
 // GET process class phase by ID.

@@ -4,26 +4,23 @@ const router = express.Router();
 const { Equipment } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
-const config = {
-  user: "TPMDB",
-  password: "TPMDB",
-  server: "localhost", // You can use 'localhost\\instance' to connect to named instance
-  database: "TPMDB",
-  stream: false,
-  options: {
-    trustedConnection: true,
-    encrypt: true,
-    enableArithAbort: true,
-    trustServerCertificate: true,
-  },
-};
-
-const pool = new sql.ConnectionPool(config);
-
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   console.time("Get all equipment");
-  res.json(Equipment);
-  console.timeEnd("Get all equipment");
+  if (enviornment === "Production") {
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(` 
+        SELECT *
+        FROM Equipment`);
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+    console.timeEnd("Get all equipment");
+  }
 });
 
 module.exports = router;
