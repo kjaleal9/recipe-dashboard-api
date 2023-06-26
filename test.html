@@ -1,0 +1,273 @@
+{{ define "Automation" }}
+	{{ $check := (index $.Checks "Automation") }}
+
+	<!-- Output -->
+	{{ if or (contains (index $.Properties "Class") "Valve") (contains (index $.Properties "Class") "Analog Output") (contains (index $.Properties "Class") "DO") (contains (index $.Properties "Class") "Motor") (contains (index $.Properties "Class") "VFD")}}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Output Checked" value="checked" {{ attr (check $check "Output Checked") }}>Output Checked</label>
+		</div>
+	{{end}}
+
+	<!-- Input -->
+	{{ if or (contains (index $.Properties "Class") "Digital Input") (contains (index $.Properties "Class") "Analog Input")}}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Input Checked" value="checked" {{ attr (check $check "Input Checked") }}>Input Checked</label>
+		</div>
+	{{end}}
+		<!-- Asi -->
+	{{ if or (contains (index $.Properties "DataType") "Cabinet")}}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Asi Checked" value="checked" {{ attr (check $check "Asi Checked") }}>Asi Checked</label>
+		</div>
+	{{end}}
+	
+		<!-- Switch -->
+	{{ if or (contains (index $.Properties "DataType") "Cabinet")}}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Switch Checked" value="checked" {{ attr (check $check "Switch Checked") }}>Switch Checked</label>
+		</div>
+	{{end}}
+	
+		<!-- EN2T Firmware -->
+	{{ if or (contains (index $.Properties "DataType") "Cabinet")}}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Firmware Checked" value="checked" {{ attr (check $check "Firmware Checked") }}>Firmware Checked</label>
+		</div>
+	{{end}}
+	
+	<!-- Valve Feedback / Seatlifts -->
+	{{ if or (contains (index $.Properties "Class") "Valve")}}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Feedback Checked" value="checked" {{ attr (check $check "Feedback Checked") }}>Feedback Checked</label>
+		</div>
+	{{end}}
+	
+	<!-- Motor -->
+	{{ if or (contains (index $.Properties "Class") "Motor") (contains (index $.Properties "Class") "VFD")}}
+		<div class="checkbox">			
+		<label><input type="checkbox" name="Feedback Checked" value="checked" {{ attr (check $check "Feedback Checked") }}>Run Feedback Checked</label>
+		</div>
+		{{if or (contains (index $.Properties "IO Type") "MOTOR") (contains (index $.Properties "IO Type") "VFD")}}
+			<div class="checkbox">			
+				<label><input type="checkbox" name="Direction Checked" value="checked" {{ attr (check $check "Direction Checked") }}>Direction Checked</label>
+			</div>
+		{{end}}
+	{{end}}
+	
+	
+	<!-- VFD -->
+	{{ if (contains (index $.Properties "Class") "VFD") }}
+		<div class="ui-field-contain">	
+			<label for="name">0% Output (Hz/rpm):</label>
+			<input type="number" class="form-control" name="0% Output (Hz?)" step="0.1" value="{{ check $check "0% Output (Hz?)" }}">
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">50% Output (Hz/rpm):</label>
+			<input type="number" class="form-control" name="50% Output (Hz?)" step="0.1" value="{{ check $check "50% Output (Hz?)" }}">
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">100% Output (Hz/rpm):</label>
+			<input type="number" class="form-control" name="100% Output (Hz?)" step="0.1" value="{{ check $check "100% Output (Hz?)" }}">
+		</div>
+		<br>
+	{{end}}
+	
+	
+{{ end }}
+
+{{ define "Mechanical" }}
+	{{ $check := (index $.Checks "Mechanical") }}
+
+	<!-- Motor -->
+	<!-- {{ if or (contains (index $.Properties "Class") "Motor") (contains (index $.Properties "Class") "VFD")}} -->
+		<!-- <div class="checkbox"> -->
+			<!-- <label><input type="checkbox" name="Motor Coupling Tight" value="checked" {{ attr (check $check "Motor Coupling Tight") }}>Motor Coupling Tight</label> -->
+		<!-- </div> -->
+	<!-- {{end}} -->
+	
+	<!-- Actuator Coupling -->
+	{{ if or (contains (index $.Properties "Class") "Valve") }}
+
+	<!-- Air Leak Check -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Air Leak Check" value="checked" {{ attr (check $check "Air Leak Check") }}>Air Leak Check</label>
+		</div>
+	<!-- Orientation Check -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Orientation Check" value="checked" {{ attr (check $check "Orientation Check") }}>Orientation Check</label>
+		</div>
+	{{end}}
+	
+
+{{ end }}
+
+{{ define "Electrical" }}
+	{{ $check := (index $.Checks "Electrical") }}
+
+	<!-- Cable Glands -->	
+		<div class="checkbox">
+			<label><input type="checkbox" name="Wiring and Installation Verified" value="checked" {{ attr (check $check "Wiring and Installation Verified") }}>Wiring\Installation Verified</label>
+		</div>
+	<!-- Labels Complete -->	
+		<div class="checkbox">
+			<label><input type="checkbox" name="Labels Complete" value="checked" {{ attr (check $check "Labels Complete") }}>Wire\Cable Labels Complete</label>
+		</div>
+	<!-- Instrument Range Set -->
+	{{ if (contains (index $.Properties "Class") "Analog Input") }}
+		<div class="checkbox">
+			<label><input type="checkbox" name="Instrument Range Set" value="checked" {{ attr (check $check "Instrument Range Set") }}>Instrument Range Set</label>
+		</div>
+
+
+	{{end}}
+	
+	<!-- VFD Parameters Configured -->
+	{{ if (contains (index $.Properties "Class") "VFD") }}
+		<div class="checkbox">
+			<label><input type="checkbox" name="VFD Parameters Configured" value="checked" {{ attr (check $check "VFD Parameters Configured") }}>VFD Parameters Configured</label>
+		</div>
+		<label>Name Plate Settings</label>
+		<div class="ui-field-contain">	
+			<label for="name">Volts (V):</label>
+			<input type="number" class="form-control" name="VFDV" step="0.1" min="0" max="460" value="{{ check $check "VFDV" }}">
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">Amps (A):</label>
+			<input type="number" class="form-control" name="VFDA" step="0.1" value="{{ check $check "VFDA" }}">
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">Hertz (Hz):</label>
+			<input type="number" class="form-control" name="VFDHz" step="0.1" min="2" max="650" value="{{ check $check "VFDHz" }}">
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">RPM:</label>
+			<input type="number" class="form-control" name="VFDRPM" step="0.1" value="{{ check $check "VFDRPM" }}">
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">Power:</label>
+			<input type="number" class="form-control" name="VFDP" step="0.1" value="{{ check $check "VFDP" }}">
+		</div>
+		<div class="form-group" style="margin-bottom:0px">	
+			<label for="name">Power Units:</label>
+			<select class="form-control" name="VFDPU">
+				{{ if eq (check $check "VFDPU") "HP (0)"}}
+					<option value="HP (0)" selected>HP</option>
+				{{ else}}
+					<option value="HP (0)">HP</option>
+				{{ end }}
+				{{ if eq (check $check "VFDPU") "kW (1)"}}
+					<option value="kW (1)" selected>kW</option>
+				{{ else}}
+					<option value="kW (1)">kW</option>
+				{{ end }}
+			</select>
+		</div>
+		<div class="ui-field-contain">	
+			<label for="name">Poles:</label>
+			<input type="number" class="form-control" name="VFDPoles" step="0" min="2" max="200" value="{{ check $check "VFDPoles" }}">
+		</div>
+		<br>
+	{{end}}
+{{ end }}
+{{ define "Water" }}
+	{{ $check := (index $.Checks "Water") }}
+
+	<!-- Parameters Entered -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Parameters Entered" value="checked" {{ attr (check $check "Parameters Entered") }}>Parameters Entered</label>
+		</div>
+	<!-- Leak Test Passed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Leak Test Passed" value="checked" {{ attr (check $check "Leak Test Passed") }}>Leak Test Passed</label>
+		</div>
+	<!-- Activations Confirmed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Activations Confirmed" value="checked" {{ attr (check $check "Activations Confirmed") }}>Activations Confirmed</label>
+		</div>
+	<br>
+{{ end }}	
+{{ define "Product" }}
+	{{ $check := (index $.Checks "Product")  }}
+	<!-- Phase Run with Product -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Phase Run with Product" value="checked" {{ attr (check $check "Phase Run with Product") }}>Phase Run with Product</label>
+		</div>
+				
+	<!-- Parameters Confirmed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Parameters Confirmed" value="checked" {{ attr (check $check "Parameters Confirmed") }}>Parameters Confirmed</label>
+		</div>
+	<br>
+{{ end }}
+{{ define "Chemical" }}
+	{{ $check := (index $.Checks "Chemical") }}
+	<!-- CC Circuit -->
+	{{  if or (contains (index $.Properties "Class") "CC Phase") (contains (index $.Properties "PhaseType") "CleaningCircuit")}}
+		<!-- Fill Volumes Confirmed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Fill Volumes Confirmed" value="checked" {{ attr (check $check "Fill Volumes Confirmed") }}>Fill Volumes Confirmed</label>
+		</div>
+		<!-- Customer Validation Complete -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Customer Validation Complete" value="checked" {{ attr (check $check "Customer Validation Complete") }}>Customer Validation Complete</label>
+		</div>
+	{{end}}
+
+	<!-- CIP Phase -->
+	{{ if or (contains (index $.Properties "PhaseType") "CIPActivity_Acid") (contains (index $.Properties "PhaseType") "CIPActivity_Caust") (contains (index $.Properties "PhaseType") "CIPActivity_IntRinse") (contains (index $.Properties "PhaseType") "CIPActivity_HotWater") (contains (index $.Properties "PhaseType") "CIPActivity_FinalRinse") (contains (index $.Properties "PhaseType") "CIPActivity_FinalDrain") (contains (index $.Properties "PhaseType") "CIPActivity_Caust2") (contains (index $.Properties "PhaseType") "CleaningLine") (contains (index $.Properties "PhaseType") "Preparation") (contains (index $.Properties "PhaseType") "CIPActivity_Disinfect")}}
+		<!-- Phase Run with Heat and Chemical -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Phase Run with Heat and Chemical" value="checked" {{ attr (check $check "Phase Run with Heat and Chemical") }}>Phase Run with Heat and Chemical</label>
+		</div>
+		<!-- Parameters Confirmed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Parameters Confirmed" value="checked" {{ attr (check $check "Parameters Confirmed") }}>Parameters Confirmed</label>
+		</div>
+	{{end}}
+	
+	<br>
+{{ end }}
+{{ define "Recipes" }}
+	{{ $check := (index $.Checks "Recipes") }}
+    
+	<!-- Recipes -->
+	{{  if or (contains (index $.Properties "Class") "CC Phase") (contains (index $.Properties "PhaseType") "CleaningCircuit")}}
+     	<div class="checkbox">
+			<label><input type="checkbox" name="Caustic" value="checked" {{ attr (check $check "Caustic") }}>Caustic</label>
+			<label><input type="checkbox" name="NA" value="checked" {{ attr (check $check "NA") }}>N/A</label>
+		</div>
+		<div class="checkbox">
+			<label><input type="checkbox" name="Acid" value="checked" {{ attr (check $check "Acid") }}>Acid</label>
+			<label><input type="checkbox" name="NA" value="checked" {{ attr (check $check "NA") }}>N/A</label>
+		</div>
+	{{end}}
+	
+	<br>
+{{ end }}
+
+{{ define "General" }}
+	{{ $check := (index $.Checks "General") }}
+
+	<!-- Leak Test Passed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Leak Test Passed" value="checked" {{ attr (check $check "Leak Test Passed") }}>Leak Test Passed</label>
+		</div>
+			<!-- Activations Confirmed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Activations Confirmed" value="checked" {{ attr (check $check "Activations Confirmed") }}>Activations Confirmed</label>
+		</div>
+			<!-- Parameters Confirmed -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Parameters Confirmed" value="checked" {{ attr (check $check "Parameters Confirmed") }}>Parameters Confirmed</label>
+		</div>
+			<!-- Phase Tested with Product or Chemical -->
+		<div class="checkbox">
+			<label><input type="checkbox" name="Phase Tested with Product or Chemical" value="checked" {{ attr (check $check "Phase Tested with Product or Chemical") }}>Phase Tested with Product or Chemical</label>
+		</div>
+			<!-- Notes -->
+		<div class="ui-field-contain">
+			<label for="name">Notes:</label>
+			<input type="text" class="form-control" name="Notes" Value="{{ check $check "Notes" }}">
+		</div>
+	<br>
+{{ end }}	

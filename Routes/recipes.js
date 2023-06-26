@@ -18,7 +18,7 @@ const recipes = Recipe.map((recipe) => {
     return material.SiteMaterialAlias === recipe.ProductID;
   });
   return Object.assign({}, recipe, matchingMaterial);
-});
+});``
 
 // GET all versions of every created recipe
 router.get("/", async (req, res) => {
