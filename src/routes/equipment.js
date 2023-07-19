@@ -1,7 +1,7 @@
 const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
-const { Equipment } = require("../LocalDatabase/TPMDB");
+// const { Equipment } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
 router.get("/", async (req, res) => {

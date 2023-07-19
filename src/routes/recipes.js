@@ -3,22 +3,22 @@ const sql = require("mssql");
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
 
-const {
-  Recipe,
-  Material,
-  RecipeEquipmentRequirement: RER,
-  TPIBK_RecipeBatchData: recipeBatchData,
-  ProcessClassPhase,
-} = require("../LocalDatabase/TPMDB");
+// const {
+//   Recipe,
+//   Material,
+//   RecipeEquipmentRequirement: RER,
+//   TPIBK_RecipeBatchData: recipeBatchData,
+//   ProcessClassPhase,
+// } = require("../LocalDatabase/TPMDB");
 
 const enviornment = "Production";
 
-const recipes = Recipe.map((recipe) => {
-  var matchingMaterial = Material.find((material) => {
-    return material.SiteMaterialAlias === recipe.ProductID;
-  });
-  return Object.assign({}, recipe, matchingMaterial);
-});``
+// const recipes = Recipe.map((recipe) => {
+//   var matchingMaterial = Material.find((material) => {
+//     return material.SiteMaterialAlias === recipe.ProductID;
+//   });
+//   return Object.assign({}, recipe, matchingMaterial);
+// });
 
 // GET all versions of every created recipe
 router.get("/", async (req, res) => {
@@ -39,6 +39,7 @@ router.get("/", async (req, res) => {
   if (enviornment === "Production") {
     try {
       const request = new sql.Request(req.app.locals.db);
+      console.log(req.app.locals.db.pool);
 
       const result = await request.query(` 
         SELECT *
@@ -93,7 +94,7 @@ router.get("/latest", (req, res) => {
         max["Version"] > recipe["Version"] ? max : recipe
       )
     );
-  }
+  };
 
   if (enviornment === "Local") {
     const groupedRecipes = groupRecipes(recipes);

@@ -1,7 +1,7 @@
 const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
-const { Phase } = require("../LocalDatabase/TPMDB");
+// const { Phase } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
 router.get("/", (req, res) => {
@@ -11,6 +11,29 @@ router.get("/", (req, res) => {
 router.get("/:ID", (req, res) => {
   console.log(req.params.ID);
   res.json(Phase.find((phase) => phase.ID === +req.params.ID));
+});
+
+router.get("/:equipment", async (req, res) => {
+  console.time("Get phases by equipment name");
+  console.log(req.params.equipment);
+  if (enviornment === "Production") {
+    try {
+      const request = new sql.Request(req.app.locals.db);
+
+      const result = await request.query(`  
+        SELECT *
+        FROM Phase
+        WHERE Name like '%${req.params.Equipment}%'
+      `);
+
+      res.json(result.recordsets[0]);
+    } catch (err) {
+      res.status(500);
+      res.send(err.message);
+    }
+
+    console.timeEnd("Get phases by equipment name");
+  }
 });
 
 router.get("/phase-types/:ID", async (req, res) => {

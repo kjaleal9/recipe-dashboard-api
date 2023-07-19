@@ -1,5 +1,5 @@
 const XLSX = require("xlsx");
-const workbook = XLSX.readFile("./LocalDatabase/TPMDB.xlsx");
+const workbook = XLSX.readFile('./LocalDatabase/TPMDB.xslx');
 
 const Equipment = XLSX.utils.sheet_to_json(workbook.Sheets["Equipment"]);
 const EquipmentMode = XLSX.utils.sheet_to_json(

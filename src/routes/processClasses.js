@@ -1,11 +1,11 @@
 const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
-const {
-  ProcessClass,
-  ProcessClassPhase,
-  RecipeEquipmentRequirement: RER,
-} = require("../LocalDatabase/TPMDB");
+// const {
+//   ProcessClass,
+//   ProcessClassPhase,
+//   RecipeEquipmentRequirement: RER,
+// } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
 // GET full database of process classes

@@ -19,7 +19,7 @@ router.get("/", async (req, res) => {
        `);
 
       res.status(200);
-      res.json(result);
+      res.json(result.recordsets[0]);
     } catch (err) {
       res.status(500);
       res.send(err.message);
@@ -29,8 +29,8 @@ router.get("/", async (req, res) => {
   console.timeEnd("Get all parameters");
 });
 
-router.get("/:RBDID/:PCPID", async (req,res)=>{
-  console.time("Get parameters based on selected step")
+router.get("/:RBDID/:PCPID", async (req, res) => {
+  console.time("Get parameters based on selected step");
 
   if (enviornment === "Production") {
     try {
@@ -74,15 +74,15 @@ router.get("/:RBDID/:PCPID", async (req,res)=>{
        `);
 
       res.status(200);
-      res.json(result);
+      res.json(result.recordsets[0]);
     } catch (err) {
       res.status(500);
-      console.log(err.message)
+      console.log(err.message);
       res.send(err.message);
     }
   }
 
   console.timeEnd("Get parameters based on selected step");
-})
+});
 
 module.exports = router;
