@@ -6,7 +6,6 @@ const {
   ProcessClassPhase,
   RecipeEquipmentRequirement: RER,
 } = require("../LocalDatabase/TPMDB");
-const enviornment = "Production";
 
 // GET full database of process classes
 router.get("/", (req, res) => {
@@ -31,22 +30,10 @@ router.get("/required", (req, res) => {
 router.get("/required/:RID/:ver", async (req, res) => {
   console.time("Get required process classes by RID and Version");
 
-  if (enviornment === "Local") {
-    const selectedRER = RER.filter(
-      (row) =>
-        row.Recipe_RID === req.params.RID &&
-        +row.Recipe_Version === +req.params.ver
-    );
+  try {
+    const request = new sql.Request(req.db);
 
-    res.json(selectedRER);
-    console.timeEnd("Get required process classes by RID and Version");
-  }
-
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.db);
-
-      const result = await request.query(`  
+    const result = await request.query(`  
         SELECT 
         RER.ID, 
         RER.ProcessClass_Name, 
@@ -64,15 +51,15 @@ router.get("/required/:RID/:ver", async (req, res) => {
             END AS Equipment_Name
         FROM RecipeEquipmentRequirement RER INNER JOIN ProcessClass PC ON RER.ProcessClass_Name = PC.Name
         WHERE Recipe_RID = '${req.params.RID}' AND Recipe_Version = ${+req
-        .params.ver}
+      .params.ver}
       `);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+
   console.timeEnd("Get required process classes by RID and Version");
 });
 
@@ -80,21 +67,21 @@ router.get("/required/:RID/:ver", async (req, res) => {
 router.get("/phases", async (req, res) => {
   console.time("Get all process class phases");
 
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.db);
+  try {
+    const request = new sql.Request(req.db);
 
-      const result = await request.query(`  
+    const result = await request.query(`  
         SELECT *
         FROM ProcessClassPhase
       `);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+  
+  console.timeEnd("Get all process class phases");
 });
 
 // GET process class phase by ID.

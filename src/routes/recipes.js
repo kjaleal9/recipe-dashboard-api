@@ -11,8 +11,6 @@ const {
   ProcessClassPhase,
 } = require("../LocalDatabase/TPMDB.js");
 
-const enviornment = "Production";
-
 // const recipes = Recipe.map((recipe) => {
 //   var matchingMaterial = Material.find((material) => {
 //     return material.SiteMaterialAlias === recipe.ProductID;
@@ -23,6 +21,7 @@ const enviornment = "Production";
 // GET all versions of every created recipe
 router.get("/", async (req, res) => {
   console.time("Get all recipes");
+
   try {
     const request = new sql.Request(req.db);
 
@@ -79,11 +78,6 @@ router.get("/latest", (req, res) => {
     );
   };
 
-  if (enviornment === "Local") {
-    const groupedRecipes = groupRecipes(recipes);
-    res.json(groupedRecipes);
-  }
-
   console.timeEnd("Get latest recipes");
 });
 
@@ -130,11 +124,10 @@ router.get("/:RID/:ver", async (req, res) => {
 router.get("/procedure/:RID/:ver", async (req, res) => {
   console.time("Get recipe procedure based on RID and Version");
 
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.db);
+  try {
+    const request = new sql.Request(req.db);
 
-      const result = await request.query(` 
+    const result = await request.query(` 
         SELECT 
           ID,
           Step,
@@ -154,24 +147,23 @@ router.get("/procedure/:RID/:ver", async (req, res) => {
         AND Recipe_Version = ${+req.params.ver}
         ORDER BY Step`);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
-    console.timeEnd("Get recipe procedure based on RID and Version");
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+
+  console.timeEnd("Get recipe procedure based on RID and Version");
 });
 
 // GET route returns Step numbers and messages of a recipe in the ProcedureModal component
 router.get("/procedure/:RID/:ver/condense", async (req, res) => {
   console.time("Get condensed recipe procedure based on RID and Version");
 
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.db);
+  try {
+    const request = new sql.Request(req.db);
 
-      const result = await request.query(`  
+    const result = await request.query(`  
         SELECT 
           Step,
           Message
@@ -180,22 +172,22 @@ router.get("/procedure/:RID/:ver/condense", async (req, res) => {
         AND Recipe_Version = ${+req.params.ver}
         ORDER BY Step`);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
-    console.timeEnd("Get condensed recipe procedure based on RID and Version");
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+
+  console.timeEnd("Get condensed recipe procedure based on RID and Version");
 });
 
 router.get("/step-types", async (req, res) => {
   console.time("Get recipe step types");
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.db);
 
-      const result = await request.query(`  
+  try {
+    const request = new sql.Request(req.db);
+
+    const result = await request.query(`  
         SELECT 
           ID,
           Name 
@@ -203,22 +195,22 @@ router.get("/step-types", async (req, res) => {
         ORDER BY ID
       `);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+
   console.timeEnd("Get recipe step types");
 });
 
 router.get("/parameters/:BatchID/:PClassID", async (req, res) => {
   console.time("Get parameters based on recipe ID and process class phase ID");
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.db);
 
-      const result = await request.query(`  
+  try {
+    const request = new sql.Request(req.db);
+
+    const result = await request.query(`  
         SELECT 
           ID, 
           Name, 
@@ -254,15 +246,15 @@ router.get("/parameters/:BatchID/:PClassID", async (req, res) => {
         HAVING (ProcessClassPhase_ID = ${req.params.PClassID}) 
         ORDER BY Description`);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
-    console.timeEnd(
-      "Get parameters based on recipe ID and process class phase ID"
-    );
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+  
+  console.timeEnd(
+    "Get parameters based on recipe ID and process class phase ID"
+  );
 });
 
 // POST add a new recipe

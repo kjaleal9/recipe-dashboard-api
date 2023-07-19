@@ -4,12 +4,8 @@ const router = express.Router();
 
 const { Material, MaterialClass } = require("../LocalDatabase/TPMDB");
 
-const enviornment = "Production";
-
 router.get("/", async (req, res) => {
   console.time("Get all materials");
-
-  if (enviornment === "Production") {
     try {
       const request = new sql.Request(req.db);
 
@@ -23,12 +19,10 @@ router.get("/", async (req, res) => {
       res.send(err.message);
     }
     console.timeEnd("Get all materials");
-  }
 });
 
 router.get("/classes", async (req, res) => {
   console.time("Get all material classes");
-  if (enviornment === "Production") {
     try {
       const request = new sql.Request(req.db);
 
@@ -42,7 +36,6 @@ router.get("/classes", async (req, res) => {
       res.send(err.message);
     }
     console.timeEnd("Get all material classes");
-  }
 });
 
 module.exports = router;

@@ -2,11 +2,9 @@ const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
 const { Equipment } = require("../LocalDatabase/TPMDB");
-const enviornment = "Production";
 
 router.get("/", async (req, res) => {
   console.time("Get all equipment");
-  if (enviornment === "Production") {
     try {
       const request = new sql.Request(req.db);
 
@@ -20,7 +18,6 @@ router.get("/", async (req, res) => {
       res.send(err.message);
     }
     console.timeEnd("Get all equipment");
-  }
 });
 
 module.exports = router;

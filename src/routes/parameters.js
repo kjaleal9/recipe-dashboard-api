@@ -3,13 +3,10 @@ const sql = require("mssql");
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
 
-const enviornment = "Production";
-
 // GET all versions of every created recipe
 router.get("/", async (req, res) => {
   console.time("Get all parameters");
 
-  if (enviornment === "Production") {
     try {
       const request = new sql.Request(req.db);
 
@@ -24,7 +21,6 @@ router.get("/", async (req, res) => {
       res.status(500);
       res.send(err.message);
     }
-  }
 
   console.timeEnd("Get all parameters");
 });
@@ -32,7 +28,6 @@ router.get("/", async (req, res) => {
 router.get("/:RBDID/:PCPID", async (req, res) => {
   console.time("Get parameters based on selected step");
 
-  if (enviornment === "Production") {
     try {
       const request = new sql.Request(req.db);
 
@@ -80,7 +75,6 @@ router.get("/:RBDID/:PCPID", async (req, res) => {
       console.log(err.message);
       res.send(err.message);
     }
-  }
 
   console.timeEnd("Get parameters based on selected step");
 });
