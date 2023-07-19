@@ -3,13 +3,13 @@ const sql = require("mssql");
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
 
-// const {
-//   Recipe,
-//   Material,
-//   RecipeEquipmentRequirement: RER,
-//   TPIBK_RecipeBatchData: recipeBatchData,
-//   ProcessClassPhase,
-// } = require("../LocalDatabase/TPMDB");
+const {
+  Recipe,
+  Material,
+  RecipeEquipmentRequirement: RER,
+  TPIBK_RecipeBatchData: recipeBatchData,
+  ProcessClassPhase,
+} = require("../LocalDatabase/TPMDB.js");
 
 const enviornment = "Production";
 
@@ -23,49 +23,32 @@ const enviornment = "Production";
 // GET all versions of every created recipe
 router.get("/", async (req, res) => {
   console.time("Get all recipes");
-  if (enviornment === "Local") {
-    const recipeExcelDates = Recipe.map((recipe) => {
-      return {
-        ...recipe,
+  try {
+    const request = new sql.Request(req.db);
 
-        // Convert excel date to normal date
-        VersionDate: (recipe.VersionDate - 25569) * 86400 * 1000,
-      };
-    });
-
-    res.json(Recipe);
-  }
-
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.app.locals.db);
-      console.log(req.app.locals.db.pool);
-
-      const result = await request.query(` 
+    const result = await request.query(` 
         SELECT *
         FROM Recipe
        `);
 
-      const versionToNum = result.recordsets[0].map((recipe) => {
-        return { ...recipe, Version: +recipe.Version };
-      });
+    const versionToNum = result.recordsets[0].map((recipe) => {
+      return { ...recipe, Version: +recipe.Version };
+    });
 
-      const recipesWithMaterial = versionToNum.map((recipe) => {
-        var matchingMaterial = Material.find((material) => {
-          return (
-            material.SiteMaterialAlias.toString() ===
-            recipe.ProductID.toString()
-          );
-        });
-        return Object.assign({}, recipe, matchingMaterial);
+    const recipesWithMaterial = versionToNum.map((recipe) => {
+      var matchingMaterial = Material.find((material) => {
+        return (
+          material.SiteMaterialAlias.toString() === recipe.ProductID.toString()
+        );
       });
+      return Object.assign({}, recipe, matchingMaterial);
+    });
 
-      res.status(200);
-      res.json(recipesWithMaterial);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
+    res.status(200);
+    res.json(recipesWithMaterial);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
 
   console.timeEnd("Get all recipes");
@@ -108,20 +91,11 @@ router.get("/latest", (req, res) => {
 router.get("/:RID/:ver", async (req, res) => {
   console.time("Get single recipe");
 
-  if (enviornment === "Local") {
-    res.json(
-      recipes.recipes.filter(
-        (recipe) =>
-          recipe.RID === req.params.RID && recipe.Version === +req.params.ver
-      )
-    );
-  }
-  if (enviornment === "Production") {
-    try {
-      const request = new sql.Request(req.app.locals.db);
+  try {
+    const request = new sql.Request(req.db);
 
-      const result = await request.query(
-        `
+    const result = await request.query(
+      `
          SELECT 
            ID,
            Recipe_RID,
@@ -139,15 +113,15 @@ router.get("/:RID/:ver", async (req, res) => {
          WHERE Recipe_RID = '${req.params.RID}' 
            AND Recipe_Version = ${+req.params.ver}
          ORDER BY step`
-      );
+    );
+    console.log(req.db.available, req.db.borrowed, req.db.pending, req.db.size);
 
-      res.json(result.recordsets[0]);
-    } catch (err) {
-      res.status(500);
-      res.send(err.message);
-    }
-    console.timeEnd("Get single recipe");
+    res.json(result.recordsets[0]);
+  } catch (err) {
+    res.status(500);
+    res.send(err.message);
   }
+  console.timeEnd("Get single recipe");
 });
 
 // GET procedure of a recipe with RID and version as params
@@ -156,47 +130,9 @@ router.get("/:RID/:ver", async (req, res) => {
 router.get("/procedure/:RID/:ver", async (req, res) => {
   console.time("Get recipe procedure based on RID and Version");
 
-  if (enviornment === "Local") {
-    const selectedProcedure = recipeBatchData.filter((row) => {
-      return (
-        row.Recipe_RID === req.params.RID &&
-        row.Recipe_Version === +req.params.ver
-      );
-    });
-
-    const selectedRER = RER.filter(
-      (row) =>
-        row.Recipe_RID === req.params.RID &&
-        +row.Recipe_Version === +req.params.ver
-    );
-
-    const procedure = selectedProcedure.map((recipeStep) => {
-      let uuid = uuidv4();
-      return { ...recipeStep, ID: uuid };
-    });
-
-    const sortedProcedure = procedure.sort((a, b) => a.Step - b.Step);
-
-    const processClassPhaseIDs = [
-      ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
-    ].filter((value) => value !== "NULL");
-
-    const selectedProcessClassPhases = ProcessClassPhase.filter((phase) =>
-      processClassPhaseIDs.includes(phase.ID)
-    );
-
-    const hydratedProcedure = {
-      procedure: sortedProcedure,
-      RER: selectedRER,
-      processClassPhases: selectedProcessClassPhases,
-    };
-
-    res.json(hydratedProcedure);
-  }
-
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(` 
         SELECT 
@@ -231,47 +167,9 @@ router.get("/procedure/:RID/:ver", async (req, res) => {
 router.get("/procedure/:RID/:ver/condense", async (req, res) => {
   console.time("Get condensed recipe procedure based on RID and Version");
 
-  if (enviornment === "Local") {
-    const selectedProcedure = recipeBatchData.filter((row) => {
-      return (
-        row.Recipe_RID === req.params.RID &&
-        row.Recipe_Version === +req.params.ver
-      );
-    });
-
-    const selectedRER = RER.filter(
-      (row) =>
-        row.Recipe_RID === req.params.RID &&
-        +row.Recipe_Version === +req.params.ver
-    );
-
-    const procedure = selectedProcedure.map((recipeStep) => {
-      let uuid = uuidv4();
-      return { ...recipeStep, ID: uuid };
-    });
-
-    const sortedProcedure = procedure.sort((a, b) => a.Step - b.Step);
-
-    const processClassPhaseIDs = [
-      ...new Set(procedure.map((row) => row.ProcessClassPhase_ID)),
-    ].filter((value) => value !== "NULL");
-
-    const selectedProcessClassPhases = ProcessClassPhase.filter((phase) =>
-      processClassPhaseIDs.includes(phase.ID)
-    );
-
-    const hydratedProcedure = {
-      procedure: sortedProcedure,
-      RER: selectedRER,
-      processClassPhases: selectedProcessClassPhases,
-    };
-
-    res.json(hydratedProcedure);
-  }
-
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT 
@@ -295,7 +193,7 @@ router.get("/step-types", async (req, res) => {
   console.time("Get recipe step types");
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT 
@@ -318,7 +216,7 @@ router.get("/parameters/:BatchID/:PClassID", async (req, res) => {
   console.time("Get parameters based on recipe ID and process class phase ID");
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT 

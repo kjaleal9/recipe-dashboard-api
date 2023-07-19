@@ -1,7 +1,7 @@
 const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
-// const { Phase } = require("../LocalDatabase/TPMDB");
+const { Phase } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
 router.get("/", (req, res) => {
@@ -18,7 +18,7 @@ router.get("/:equipment", async (req, res) => {
   console.log(req.params.equipment);
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT *
@@ -40,7 +40,7 @@ router.get("/phase-types/:ID", async (req, res) => {
   console.time("Get phase types by process class ID");
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT 

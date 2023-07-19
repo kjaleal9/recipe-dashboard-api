@@ -1,14 +1,14 @@
 const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
-// const { Equipment } = require("../LocalDatabase/TPMDB");
+const { Equipment } = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
 router.get("/", async (req, res) => {
   console.time("Get all equipment");
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(` 
         SELECT *

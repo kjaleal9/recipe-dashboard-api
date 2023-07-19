@@ -1,11 +1,11 @@
 const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
-// const {
-//   ProcessClass,
-//   ProcessClassPhase,
-//   RecipeEquipmentRequirement: RER,
-// } = require("../LocalDatabase/TPMDB");
+const {
+  ProcessClass,
+  ProcessClassPhase,
+  RecipeEquipmentRequirement: RER,
+} = require("../LocalDatabase/TPMDB");
 const enviornment = "Production";
 
 // GET full database of process classes
@@ -44,7 +44,7 @@ router.get("/required/:RID/:ver", async (req, res) => {
 
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT 
@@ -82,7 +82,7 @@ router.get("/phases", async (req, res) => {
 
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(`  
         SELECT *

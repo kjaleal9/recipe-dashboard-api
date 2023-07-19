@@ -2,7 +2,7 @@ const express = require("express");
 const sql = require("mssql");
 const router = express.Router();
 
-// const { Material, MaterialClass } = require("../LocalDatabase/TPMDB");
+const { Material, MaterialClass } = require("../LocalDatabase/TPMDB");
 
 const enviornment = "Production";
 
@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
 
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(` 
         SELECT *
@@ -30,7 +30,7 @@ router.get("/classes", async (req, res) => {
   console.time("Get all material classes");
   if (enviornment === "Production") {
     try {
-      const request = new sql.Request(req.app.locals.db);
+      const request = new sql.Request(req.db);
 
       const result = await request.query(` 
         SELECT *
