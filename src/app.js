@@ -6,6 +6,7 @@ const processClasses = require("./routes/processClasses");
 const phases = require("./routes/phases");
 const equipment = require("./routes/equipment");
 const parameters = require("./routes/parameters");
+const errorLog = require('./routes/errorlog')
 const { databaseMiddleware } = require("./sql");
 
 const app = express();
@@ -20,5 +21,6 @@ app.use("/process-classes", processClasses);
 app.use("/phases", phases);
 app.use("/equipment", equipment);
 app.use("/parameters", parameters);
+app.use("/errors", errorLog);
 
 module.exports = app;
